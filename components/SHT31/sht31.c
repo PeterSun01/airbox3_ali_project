@@ -71,7 +71,7 @@ void i2c_init()
 	ESP_ERROR_CHECK(i2c_driver_install(i2c_master_port, conf.mode, 
 									   I2C_RX_BUF_DISABLE, 
 									   I2C_TX_BUF_DISABLE, 0));
-	vTaskDelay(200 / portTICK_PERIOD_MS);
+	vTaskDelay(500 / portTICK_PERIOD_MS);
 
 	//sht31_reset();
 	//vTaskDelay(10 / portTICK_PERIOD_MS);

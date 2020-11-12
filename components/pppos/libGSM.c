@@ -118,7 +118,7 @@ static GSM_Cmd cmd_Reset =
 static GSM_Cmd cmd_RFOn =
 {
 	.cmd = "AT+CFUN=1\r\n",
-	.cmdSize = sizeof("ATCFUN=1,0\r\n")-1,
+	.cmdSize = sizeof("ATCFUN=1\r\n")-1,
 	.cmdResponseOnOk = GSM_OK_Str,
 	.timeoutMs = 10000,
 	.delayMs = 1000,
@@ -150,6 +150,16 @@ static GSM_Cmd cmd_Reg =
 	.cmd = "AT+CREG?\r\n",
 	.cmdSize = sizeof("AT+CREG?\r\n")-1,
 	.cmdResponseOnOk = "CREG: 0,1",
+	.timeoutMs = 3000,
+	.delayMs = 2000,
+	.skip = 0,
+};
+
+static GSM_Cmd cmd_Csq =
+{
+	.cmd = "AT+CSQ\r\n",
+	.cmdSize = sizeof("AT+CSQ\r\n")-1,
+	.cmdResponseOnOk = "",
 	.timeoutMs = 3000,
 	.delayMs = 2000,
 	.skip = 0,
@@ -188,24 +198,23 @@ static GSM_Cmd cmd_Connect =
 };
 
 
-
-
 static GSM_Cmd *GSM_Init[] =
 {
 		//&cmd_Reset,
 		&cmd_AT,
-		//&cmd_Reset,
 		&cmd_EchoOff,
 		&cmd_CBC,
 		&cmd_RFOn,
 		&cmd_NoSMSInd,
 		&cmd_Pin,
 		&cmd_Reg,
+		&cmd_Csq,
 		
 		&cmd_APN,
         &cmd_AT,
 		&cmd_Connect,
 };
+
 
 #define GSM_InitCmdsSize  (sizeof(GSM_Init)/sizeof(GSM_Cmd *))
 
@@ -428,9 +437,19 @@ static int atCmd_waitResponse(char * cmd, char *resp, char * resp1, int cmdSize,
 					#endif
 					if(strstr(cmd,"AT+CBC")!=NULL)
 					{
-						char pwr[3];
-						sprintf(pwr,"%C%C%C",sresp[11],sresp[12],sresp[13]);
-						pwr_int=atoi(pwr);
+						char *ptr;
+						char *retptr;
+						ptr=sresp;
+						int i=0;
+						retptr=strtok(ptr,",");
+						ptr=NULL;
+						retptr=strtok(ptr,",");
+						printf("pwr_char=%s\n",retptr);
+
+
+						//char pwr[3];
+						//sprintf(pwr,"%C%C%C",sresp[11],sresp[12],sresp[13]);
+						pwr_int=atoi(retptr);
 						pwr_int=(float)pwr_int*1.4;
 						//y = -0.0086x2 + 1.9152x - 4.2376
 						pwr_int=-0.0086*(float)pwr_int*(float)pwr_int + 1.9152*(float)pwr_int - 4.2376;
@@ -836,6 +855,7 @@ void GSM_poweron(void)
 
 int ppposInit()
 {
+	Led_Status=LED_STA_INIT;
 	GSM_poweron();
 	ppp_event_group = xEventGroupCreate();
 	if (pppos_mutex != NULL) xSemaphoreTake(pppos_mutex, PPPOSMUTEX_TIMEOUT);

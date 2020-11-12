@@ -20,6 +20,7 @@ void goto_sleep(int time)
     GSM_PWR_Off();
     PM25_PWR_Off();
     TVOC_PWR_Off();
+    TVOC_PWR_On();
     IIC_PWR_Off();
     Led_B_Off();
     Led_R_Off();

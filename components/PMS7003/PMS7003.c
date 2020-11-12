@@ -6,21 +6,20 @@
 #include "driver/gpio.h"
 #include "sht31.h"
 #include "PMS7003.h"
+#include "Nvs.h"
 
-
+#define GPIO_TVOC_PWR	14
 #define UART2_TXD  (GPIO_NUM_26)
 #define UART2_RXD  (GPIO_NUM_25)
 #define UART2_RTS  (UART_PIN_NO_CHANGE)
 #define UART2_CTS  (UART_PIN_NO_CHANGE)
-
 #define BUF_SIZE    100
 
 static const char *TAG = "PM25_TVOC";
-
 void UART2_Read_Task(void* arg);
+extern void write_flash_calibration(void);
+int32_t calibration_flag=0;
 
-
-#define GPIO_TVOC_PWR	14
 
 void TVOC_PWR_GPIO_Init(void)
 {
@@ -72,13 +71,12 @@ void PM25_Init(void)
     //TVOC_PWR_GPIO_Init();
     TVOC_PWR_Off();
 
-    PM25_PWR_On();
+    //PM25_PWR_On();
+    //vTaskDelay(1000 / portTICK_RATE_MS);
+    //PM25_PWR_Off();
     vTaskDelay(500 / portTICK_RATE_MS);
-    PM25_PWR_Off();
-    vTaskDelay(1000 / portTICK_RATE_MS);
     PM25_PWR_On();
 
-    
     //配置GPIO
     gpio_config_t io_conf;
     io_conf.intr_type = GPIO_INTR_DISABLE;
@@ -166,12 +164,25 @@ void UART2_Read_Task(void* arg)
     uint8_t data_u2[BUF_SIZE];
     static uint16_t data_count=0;
     static uint32_t CO2_aver=0;
+    static uint64_t count=1;
     while(1)
     {
+        //printf("conut=%lld",count);
+        if(count>1000)
+        {
+            count=0;
+            data_count=0;
+            PM25_PWR_Off();
+            vTaskDelay(200 / portTICK_PERIOD_MS);
+            TVOC_PWR_On();
+            vTaskDelay(200 / portTICK_PERIOD_MS);
+            sht31_reset();
+            vTaskDelay(10 / portTICK_PERIOD_MS);
+
+        }
         int len1 = uart_read_bytes(UART_NUM_2, data_u2, BUF_SIZE, 20 / portTICK_RATE_MS);
         if(len1!=0)  //读取到传感器数据
         {
-            
             for(int i=0;i<len1;i++)
             {
                 printf("0x%02x ",data_u2[i]);
@@ -188,18 +199,35 @@ void UART2_Read_Task(void* arg)
                     TVOC = (uint16_t)((data_u2[11]<<8) | data_u2[12]);
                     HCHO = (uint16_t)((data_u2[13]<<8) | data_u2[14]);
                     printf("CO2=%dppm,TVOC=%dppb,HCHO=%dppb,data_count=%d,CO2_aver=%d\n", CO2,TVOC,HCHO,data_count,CO2_aver);
-                    if((data_count>=50)&&(data_count<60))
+                    //if((restart_counter%CO2_CAL_COUNT==0)|(calibration_flag==0))//每70次CO2连续开启10分钟，重新校准CO2传感器
+                    // if(calibration_flag==0)//每70次CO2连续开启10分钟，重新校准CO2传感器
+                    // {
+                    //     if((data_count>=590)&&(data_count<600))
+                    //     {
+                    //         CO2_aver=CO2_aver+CO2;
+                    //     }
+                    //     if(data_count==600)//结束测量，进行上传
+                    //     {
+                    //         CO2=CO2_aver/10;
+                    //         ESP_LOGI(TAG, "final CO2=%dppm,TVOC=%dppb,HCHO=%dppb,data_count=%d,CO2_aver=%d", CO2,TVOC,HCHO,data_count,CO2_aver);
+                    //         xEventGroupSetBits(PM25_event_group, PM25_COMPLETE_BIT);
+                    //         write_flash_calibration();
+                    //         vTaskDelete( NULL );  //任务删除
+                    //     }
+                    // }
+                    // else
                     {
-                        CO2_aver=CO2_aver+CO2;
-                    }
-                    if(data_count==60)//结束测量，进行上传
-                    {
-                        //PM25_PWR_Off();
-                        //TVOC_PWR_Off();
-                        CO2=CO2_aver/10;
-                        ESP_LOGI(TAG, "final CO2=%dppm,TVOC=%dppb,HCHO=%dppb,data_count=%d,CO2_aver=%d", CO2,TVOC,HCHO,data_count,CO2_aver);
-                        xEventGroupSetBits(PM25_event_group, PM25_COMPLETE_BIT);
-                        vTaskDelete( NULL );  //任务删除
+                        if((data_count>=20)&&(data_count<30))
+                        {
+                            CO2_aver=CO2_aver+CO2;
+                        }
+                        if(data_count==30)//结束测量，进行上传
+                        {
+                            CO2=CO2_aver/10;
+                            ESP_LOGI(TAG, "final CO2=%dppm,TVOC=%dppb,HCHO=%dppb,data_count=%d,CO2_aver=%d", CO2,TVOC,HCHO,data_count,CO2_aver);
+                            xEventGroupSetBits(PM25_event_group, PM25_COMPLETE_BIT);
+                            vTaskDelete( NULL );  //任务删除
+                        }
                     }
                 }
             }
@@ -211,10 +239,12 @@ void UART2_Read_Task(void* arg)
                     PM2_5  = (uint16_t)((data_u2[12]<<8) | data_u2[13]);
                     ESP_LOGI(TAG, "PM2_5=%d,data_count=%d", PM2_5, data_count);
                     data_count++;
-                    if(data_count>=15)
+                    if(data_count>=25)
                     {
                         data_count=0;
+                        count=0;
                         PM25_PWR_Off();
+                        vTaskDelay(200 / portTICK_PERIOD_MS);
                         TVOC_PWR_On();
                         vTaskDelay(200 / portTICK_PERIOD_MS);
                         sht31_reset();
@@ -224,7 +254,11 @@ void UART2_Read_Task(void* arg)
             }
             len1=0;
             bzero(data_u2,sizeof(data_u2));                 
-        }  
+        } 
+        if(count>0)
+        { 
+            count++;
+        }
         vTaskDelay(5 / portTICK_RATE_MS);
     }   
 }

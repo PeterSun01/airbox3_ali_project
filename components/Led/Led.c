@@ -47,6 +47,7 @@ static void Led_Task(void* arg)
 
             case LED_STA_SENDDATAOVER:
                 Led_B_Off();
+                Led_R_Off();
                 vTaskDelay(10 / portTICK_RATE_MS);
                 break;
 
@@ -83,7 +84,7 @@ void Led_Init(void)
     gpio_set_level(GPIO_LED_R, 0);
     gpio_set_level(GPIO_LED_B, 0);
 
-    Led_Status=LED_STA_INIT;
+    Led_Status=LED_STA_SENDDATAOVER;
 
     xTaskCreate(Led_Task, "Led_Task", 4096, NULL, 5, NULL);
 
