@@ -19,7 +19,7 @@ static void Led_Task(void* arg)
                 vTaskDelay(10 / portTICK_RATE_MS);
                 break;
             
-            case LED_STA_TOUCH:
+            case LED_STA_CALI:
                 Led_R_On();
                 vTaskDelay(300 / portTICK_RATE_MS);
                 Led_B_On();

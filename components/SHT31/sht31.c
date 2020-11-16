@@ -54,7 +54,7 @@ void IIC_PWR_Off(void)
 void i2c_init() 
 {
 	IIC_PWR_GPIO_Init();
-	TVOC_PWR_GPIO_Init();
+	TVOC_PWR_GPIO_Init();//开启SHT30电源
 	TVOC_PWR_On();
 	IIC_PWR_On();
 

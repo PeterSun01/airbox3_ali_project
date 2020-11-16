@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 #include "nvs_flash.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -39,16 +40,16 @@ void timer_periodic_cb(void *arg) //1ms中断一次
 {
   static int64_t timer_count = 0;
   timer_count++;
-  // if((restart_counter%CO2_CAL_COUNT==0)|(calibration_flag==0))//每70次CO2连续开启10分钟，重新校准CO2传感器
-  // {
-  //   if (timer_count >= 900000) //校准时最大15min
-  //   {
-  //       timer_count = 0;
-  //       printf("[APP] Free memory: %d bytes\n", esp_get_free_heap_size());
-  //       goto_sleep(LONG_SLEEP_TIME);
-  //   }
-  // }
-  // else
+  if(calibration_flag==1)//开机需要重新校准CO2传感器
+  {
+    if (timer_count >= 1200000) //校准时最大20min
+    {
+        timer_count = 0;
+        printf("[APP] Free memory: %d bytes\n", esp_get_free_heap_size());
+        goto_sleep(LONG_SLEEP_TIME);
+    }
+  }
+  else
   {
     if (timer_count >= 240000) //非校准时最大4min
     {
@@ -73,26 +74,25 @@ void read_flash_usr(void)
   else 
   {
       printf("Done\n");
-      // Read restart_counter
-      printf("Reading restart counter from NVS ... ");
-      err = nvs_get_i32(my_handle, "restart_counter", &restart_counter);
-      switch (err) 
-      {
-          case ESP_OK:
-            printf("Done\n");
-            printf("Restart counter = %d\n", restart_counter);
-            break;
-          case ESP_ERR_NVS_NOT_FOUND://烧写程序后第一次开机,则清空eeprom，重新烧写序列号
-            printf("The first time start after flash!\n");
-            char zero_data[256];
-            bzero(zero_data,sizeof(zero_data));
-            E2prom_Write(0x00, (uint8_t *)zero_data, sizeof(zero_data)); 
-            break;
-          default :
-            printf("Error (%s) reading!\n", esp_err_to_name(err));
-      }
+      // printf("Reading restart counter from NVS ... ");
+      // err = nvs_get_i32(my_handle, "restart_counter", &restart_counter);
+      // switch (err) 
+      // {
+      //     case ESP_OK:
+      //       printf("Done\n");
+      //       printf("Restart counter = %d\n", restart_counter);
+      //       break;
+      //     case ESP_ERR_NVS_NOT_FOUND://烧写程序后第一次开机,则清空eeprom，重新烧写序列号
+      //       printf("The first time start after flash!\n");
+      //       char zero_data[256];
+      //       bzero(zero_data,sizeof(zero_data));
+      //       E2prom_Write(0x00, (uint8_t *)zero_data, sizeof(zero_data)); 
+      //       break;
+      //     default :
+      //       printf("Error (%s) reading!\n", esp_err_to_name(err));
+      // }
 
-      // Read co2校准标志位
+      // 读取是否上次
       printf("Reading CO2 calibration from NVS ... ");
       err = nvs_get_i32(my_handle, "cali_flag", &calibration_flag);
       switch (err) 
@@ -174,15 +174,29 @@ static void Uart0_Task(void* arg)
 
 void app_main(void)
 {
-  ESP_ERROR_CHECK( nvs_flash_init() );
+  ESP_ERROR_CHECK(nvs_flash_init());
+  PM25_PWR_GPIO_Init();
+  PM25_PWR_Off();
+  vTaskDelay(1000 / portTICK_RATE_MS);
   ESP_LOGI("MAIN", "[APP] IDF version: %s", esp_get_idf_version());
   Led_Init();
   i2c_init();
   Uart0_Init();
 
+  time_t timep;
+  //struct tm *p;
+  time (&timep);
+  //p=gmtime(&timep);
+  //ESP_LOGI("RTC", "Read:%d-%d-%d %d:%d:%d",(1900+p->tm_year),(1+p->tm_mon),p->tm_mday,p->tm_hour,p->tm_min,p->tm_sec);
+  printf("timestamps=%ld\n",timep);
+  if(timep<5)//从没电到上电，先进行TVOC 15min预热校准
+  {
+    calibration_flag=1;
+  }
+
   xTaskCreate(Uart0_Task, "Uart0_Task", 4096, NULL, 10, NULL);
   //read_flash_usr();//读取开机次数
-
+  
   /*******************************timer 1s init**********************************************/
   esp_err_t err = esp_timer_create(&timer_periodic_arg, &timer_periodic_handle);
   err = esp_timer_start_periodic(timer_periodic_handle, 1000); //创建定时器，单位us，定时1ms
@@ -215,6 +229,11 @@ void app_main(void)
   }
 
   PM25_Init();
+  if(calibration_flag==1)
+  {
+    printf("wait calibration then pppos\r\n");
+    xEventGroupWaitBits(PM25_event_group, PM25_COMPLETE_BIT , false, true, portMAX_DELAY); 
+  }
   ppposInit(); 
   //阻塞等待ppp连接
   xEventGroupWaitBits(ppp_event_group, PPP_CONNECTED_BIT , false, true, portMAX_DELAY); 

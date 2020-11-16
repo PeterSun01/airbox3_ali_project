@@ -20,6 +20,7 @@
 #include "lwip/netdb.h"
 #include "lwip/dns.h"
 #include "Led.h"
+#include "sleep.h"
 
 #define GSM_GPIO_TX 	(GPIO_NUM_32)
 #define GSM_GPIO_RX 	(GPIO_NUM_35)
@@ -105,15 +106,15 @@ static GSM_Cmd cmd_NoSMSInd =
 	.skip = 0,
 };
 
-static GSM_Cmd cmd_Reset =
-{
-	.cmd = "ATZ\r\n",
-	.cmdSize = sizeof("ATZ\r\n")-1,
-	.cmdResponseOnOk = GSM_OK_Str,
-	.timeoutMs = 300,
-	.delayMs = 0,
-	.skip = 0,
-};
+// static GSM_Cmd cmd_Reset =
+// {
+// 	.cmd = "ATZ\r\n",
+// 	.cmdSize = sizeof("ATZ\r\n")-1,
+// 	.cmdResponseOnOk = GSM_OK_Str,
+// 	.timeoutMs = 300,
+// 	.delayMs = 0,
+// 	.skip = 0,
+// };
 
 static GSM_Cmd cmd_RFOn =
 {
@@ -165,15 +166,15 @@ static GSM_Cmd cmd_Csq =
 	.skip = 0,
 };
 
-static GSM_Cmd cmd_gnss =
-{
-	.cmd = "AT+QGNSSC=1\r\n",
-	.cmdSize = sizeof("AT+QGNSSC=1\r\n")-1,
-	.cmdResponseOnOk = "",
-	.timeoutMs = 500,
-	.delayMs = 0,
-	.skip = 0,
-};
+// static GSM_Cmd cmd_gnss =
+// {
+// 	.cmd = "AT+QGNSSC=1\r\n",
+// 	.cmdSize = sizeof("AT+QGNSSC=1\r\n")-1,
+// 	.cmdResponseOnOk = "",
+// 	.timeoutMs = 500,
+// 	.delayMs = 0,
+// 	.skip = 0,
+// };
 
 static GSM_Cmd cmd_APN =
 {
@@ -296,7 +297,8 @@ static void ppp_status_cb(ppp_pcb *pcb, int err_code, void *ctx)
 			xSemaphoreTake(pppos_mutex, PPPOSMUTEX_TIMEOUT);
 			gsm_status = GSM_STATE_DISCONNECTED;
 			Led_Status=LED_STA_WIFIERR;
-			xSemaphoreGive(pppos_mutex);
+			xSemaphoreGive(pppos_mutex); 
+			goto_sleep(SHORT_SLEEP_TIME);
 			break;
 		}
 		case PPPERR_AUTHFAIL: {
@@ -440,7 +442,7 @@ static int atCmd_waitResponse(char * cmd, char *resp, char * resp1, int cmdSize,
 						char *ptr;
 						char *retptr;
 						ptr=sresp;
-						int i=0;
+						//int i=0;
 						retptr=strtok(ptr,",");
 						ptr=NULL;
 						retptr=strtok(ptr,",");

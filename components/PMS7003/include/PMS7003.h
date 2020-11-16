@@ -13,6 +13,7 @@ extern void PM25_Init(void);
 extern void PM25_PWR_Off(void);
 extern void TVOC_PWR_On(void);
 extern void TVOC_PWR_GPIO_Init(void);
+extern void PM25_PWR_GPIO_Init(void);
 
 
 EventGroupHandle_t PM25_event_group;

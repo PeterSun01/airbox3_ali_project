@@ -12,14 +12,14 @@
 #include "sht31.h"
 
 
-static const char *TAG = "SLEEP";
+//static const char *TAG = "SLEEP";
 
 
 void goto_sleep(int time)
 {
     GSM_PWR_Off();
     PM25_PWR_Off();
-    TVOC_PWR_Off();
+    //TVOC_PWR_Off();
     TVOC_PWR_On();
     IIC_PWR_Off();
     Led_B_Off();

@@ -34,7 +34,6 @@ esp_err_t parse_Uart0(char *json_data)
     {
         printf("uart0 Json Formatting error\n");
         cJSON_Delete(json_data_parse);
-
         return 0;
     }
     else
@@ -45,7 +44,6 @@ esp_err_t parse_Uart0(char *json_data)
             "ProductKey": "a18hJfuxArE",
             "DeviceName": "AIR2V001",
             "DeviceSecret": "kc0tfij2RbXdbOmiHSXnwmaZgR3CDE85",
-            
         }
         */
         char zero_data[256];
@@ -122,15 +120,13 @@ void create_mqtt_json(creat_json *pCreat_json)
     cJSON_AddItemToObject(params, "TVOC", cJSON_CreateNumber(TVOC));
     cJSON_AddItemToObject(params, "HCHO", cJSON_CreateNumber(HCHO));
     cJSON_AddItemToObject(params, "Battery", cJSON_CreateNumber(pwr_int));
-    if(PM2_5<10)
-    {
-        PM2_5=PM2_5+esp_random()%8+3;
-        //PM2_5=PM2_5+5;
-    }
+    // if(PM2_5<10)
+    // {
+    //     PM2_5=PM2_5+esp_random()%8+3;
+    //     //PM2_5=PM2_5+5;
+    // }
     cJSON_AddItemToObject(params, "PM25", cJSON_CreateNumber(PM2_5));
     
-   
-
     char *cjson_printunformat;
     cjson_printunformat=cJSON_PrintUnformatted(root);
     pCreat_json->creat_json_c=strlen(cjson_printunformat);
@@ -139,7 +135,6 @@ void create_mqtt_json(creat_json *pCreat_json)
     printf("len=%d,mqtt_json=%s\n",pCreat_json->creat_json_c,pCreat_json->creat_json_b);
     free(cjson_printunformat);
     cJSON_Delete(root);
-    
 }
 
 

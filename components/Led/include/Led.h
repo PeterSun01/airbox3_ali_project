@@ -30,7 +30,7 @@ extern void Led_R_Off(void);
 uint8_t Led_Status;
 
 #define LED_STA_INIT            0x00
-#define LED_STA_TOUCH           0x01//配网
+#define LED_STA_CALI           0x01//配网
 #define LED_STA_SENDDATA        0x02
 #define LED_STA_WIFIERR         0x03
 #define LED_STA_NOSER           0x04//无序列号
