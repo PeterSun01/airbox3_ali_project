@@ -175,11 +175,11 @@ static void Uart0_Task(void* arg)
 void app_main(void)
 {
   ESP_ERROR_CHECK(nvs_flash_init());
+  Led_Init();
   PM25_PWR_GPIO_Init();
   PM25_PWR_Off();
   vTaskDelay(1000 / portTICK_RATE_MS);
   ESP_LOGI("MAIN", "[APP] IDF version: %s", esp_get_idf_version());
-  Led_Init();
   i2c_init();
   Uart0_Init();
 

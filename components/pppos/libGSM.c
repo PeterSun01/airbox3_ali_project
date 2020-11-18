@@ -452,9 +452,9 @@ static int atCmd_waitResponse(char * cmd, char *resp, char * resp1, int cmdSize,
 						//char pwr[3];
 						//sprintf(pwr,"%C%C%C",sresp[11],sresp[12],sresp[13]);
 						pwr_int=atoi(retptr);
-						pwr_int=(float)pwr_int*1.4;
+						//pwr_int=(float)pwr_int*1.4;
 						//y = -0.0086x2 + 1.9152x - 4.2376
-						pwr_int=-0.0086*(float)pwr_int*(float)pwr_int + 1.9152*(float)pwr_int - 4.2376;
+						//pwr_int=-0.0086*(float)pwr_int*(float)pwr_int + 1.9152*(float)pwr_int - 4.2376;
 						if(pwr_int>100)
 						{
 							pwr_int=100;

@@ -84,7 +84,7 @@ void Led_Init(void)
     gpio_set_level(GPIO_LED_R, 0);
     gpio_set_level(GPIO_LED_B, 0);
 
-    Led_Status=LED_STA_SENDDATAOVER;
+    Led_Status=LED_STA_INIT;
 
     xTaskCreate(Led_Task, "Led_Task", 4096, NULL, 5, NULL);
 

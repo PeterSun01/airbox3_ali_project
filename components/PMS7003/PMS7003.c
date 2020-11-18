@@ -9,6 +9,7 @@
 #include "PMS7003.h"
 #include "Led.h"
 #include "Nvs.h"
+#include "sleep.h"
 
 #define GPIO_TVOC_PWR	14
 #define UART2_TXD  (GPIO_NUM_26)
@@ -104,8 +105,6 @@ void PM25_Init(void)
     uart_set_pin(UART_NUM_2, UART2_TXD, UART2_RXD, UART2_RTS, UART2_CTS);
     uart_driver_install(UART_NUM_2, BUF_SIZE * 2, 0, 0, NULL, 0);
 
-
-
     //uart_write_bytes(UART_NUM_2, Send_TVOC_active, sizeof(Send_TVOC_active));
     xTaskCreate(&UART2_Read_Task, "UART2_Read_Task", 2048, NULL, 10, NULL);
     PM25_event_group = xEventGroupCreate();
@@ -167,6 +166,8 @@ void UART2_Read_Task(void* arg)
     uint8_t data_u2[BUF_SIZE];
     static uint16_t data_count=0;
     static uint32_t CO2_aver=0;
+    static uint32_t TVOC_aver=0;
+    static uint32_t HCHO_aver=0;
     //static uint64_t count=1;
 
 
@@ -210,10 +211,14 @@ void UART2_Read_Task(void* arg)
                         if((data_count>=890)&&(data_count<900))
                         {
                             CO2_aver=CO2_aver+CO2;
+                            TVOC_aver=TVOC_aver+TVOC;
+                            HCHO_aver=HCHO_aver+HCHO;
                         }
                         if(data_count==900)//结束测量，打开PM25传感器
                         {
                             CO2=CO2_aver/10;
+                            TVOC=TVOC_aver/10;
+                            HCHO=HCHO_aver/10;
                             ESP_LOGI(TAG, "final CO2=%dppm,TVOC=%dppb,HCHO=%dppb,data_count=%d,CO2_aver=%d", CO2,TVOC,HCHO,data_count,CO2_aver);
                             data_count=0;
                             //uart_write_bytes(UART_NUM_2, Send_TVOC_passive, sizeof(Send_TVOC_passive));
@@ -230,12 +235,22 @@ void UART2_Read_Task(void* arg)
                         if((data_count>=40)&&(data_count<50))
                         {
                             CO2_aver=CO2_aver+CO2;
+                            TVOC_aver=TVOC_aver+TVOC;
+                            HCHO_aver=HCHO_aver+HCHO;
                         }
                         if(data_count==50)//结束测量，打开PM25传感器
                         {
                             CO2=CO2_aver/10;
+                            TVOC=TVOC_aver/10;
+                            HCHO=HCHO_aver/10;                            
                             ESP_LOGI(TAG, "final CO2=%dppm,TVOC=%dppb,HCHO=%dppb,data_count=%d,CO2_aver=%d", CO2,TVOC,HCHO,data_count,CO2_aver);
                             data_count=0;
+
+                            if((CO2==400)&&(TVOC==0)&&(HCHO==0))//需要暖机重新校准
+                            {
+                                goto_sleep(600);
+                            }
+
                             //uart_write_bytes(UART_NUM_2, Send_TVOC_passive, sizeof(Send_TVOC_passive));
                             //vTaskDelay(500 / portTICK_PERIOD_MS);
                             PM25_PWR_GPIO_Init();
@@ -254,7 +269,7 @@ void UART2_Read_Task(void* arg)
                     PM2_5  = (uint16_t)((data_u2[12]<<8) | data_u2[13]);
                     ESP_LOGI(TAG, "PM2_5=%d,data_count=%d", PM2_5, data_count);
                     data_count++;
-                    if(data_count>=25)
+                    if(data_count>=25)//PM25测量结束
                     {
                         data_count=0;
                         //count=0;
@@ -262,6 +277,7 @@ void UART2_Read_Task(void* arg)
                         vTaskDelay(200 / portTICK_PERIOD_MS);
                         TVOC_PWR_On();
                         vTaskDelay(200 / portTICK_PERIOD_MS);
+                        //uart_write_bytes(UART_NUM_2, Send_TVOC_passive, sizeof(Send_TVOC_passive));
                         sht31_reset();
                         vTaskDelay(10 / portTICK_PERIOD_MS);
 
@@ -283,7 +299,7 @@ void UART2_Read_Task(void* arg)
         // { 
         //     count++;
         // }
-        vTaskDelay(5 / portTICK_RATE_MS);
+        vTaskDelay(50 / portTICK_RATE_MS);
     }   
 }
 
