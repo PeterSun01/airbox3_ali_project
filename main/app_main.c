@@ -167,7 +167,7 @@ static void Uart0_Task(void* arg)
     while(1)
     {
         Uart0_read();
-        vTaskDelay(10 / portTICK_RATE_MS);
+        vTaskDelay(50 / portTICK_RATE_MS);
     }  
 }
 
@@ -231,12 +231,14 @@ void app_main(void)
   PM25_Init();
   if(calibration_flag==1)
   {
-    printf("wait calibration then pppos\r\n");
-    xEventGroupWaitBits(PM25_event_group, PM25_COMPLETE_BIT , false, true, portMAX_DELAY); 
+    ESP_LOGW("MAIN", "wait calibration then pppos\n");
   }
+  //阻塞等待TVOC传感器测量结束
+  xEventGroupWaitBits(PM25_event_group, PM25_COMPLETE_BIT , false, true, portMAX_DELAY); 
   ppposInit(); 
-  //阻塞等待ppp连接
+  //阻塞等待ppp连接成功
   xEventGroupWaitBits(ppp_event_group, PPP_CONNECTED_BIT , false, true, portMAX_DELAY); 
+  vTaskDelay(500 / portTICK_RATE_MS);
   initialise_mqtt();
 
 }

@@ -39,10 +39,10 @@ void Uart0_Init(void)
 
 void Uart0_read(void)
 {
-    uint8_t data_u0[BUF_SIZE];
+    uint8_t data_u0[BUF_SIZE]={0};
  
     int len0 = uart_read_bytes(UART_NUM_0, data_u0, BUF_SIZE, 20 / portTICK_RATE_MS);
-    if(len0!=0)  //读取到按键数据
+    if(len0!=0)  //读取到数据
     {
         len0=0;
         ESP_LOGW(TAG, "data_u0=%s",data_u0);

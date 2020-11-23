@@ -448,14 +448,13 @@ static int atCmd_waitResponse(char * cmd, char *resp, char * resp1, int cmdSize,
 						retptr=strtok(ptr,",");
 						printf("pwr_char=%s\n",retptr);
 
-
 						//char pwr[3];
 						//sprintf(pwr,"%C%C%C",sresp[11],sresp[12],sresp[13]);
 						pwr_int=atoi(retptr);
 						//pwr_int=(float)pwr_int*1.4;
 						//y = -0.0086x2 + 1.9152x - 4.2376
 						//pwr_int=-0.0086*(float)pwr_int*(float)pwr_int + 1.9152*(float)pwr_int - 4.2376;
-						if(pwr_int>100)
+						if(pwr_int>=95)
 						{
 							pwr_int=100;
 						}
@@ -465,6 +464,22 @@ static int atCmd_waitResponse(char * cmd, char *resp, char * resp1, int cmdSize,
 						}
 
 						ESP_LOGI(TAG,"pwr=%d",pwr_int);
+					}
+
+					else if(strstr(cmd,"+CSQ")!=NULL)
+					{
+						char *ptr;
+						char *retptr;
+						ptr=sresp;
+						retptr=strtok(ptr,":");
+						ptr=NULL;
+						retptr=strtok(ptr,",");
+						//printf("CSQ_char=%s\n",retptr);
+
+						//char pwr[3];
+						//sprintf(pwr,"%C%C%C",sresp[11],sresp[12],sresp[13]);
+						csq_int=atoi(retptr);
+						printf("csq_int=%d\n",csq_int);
 					}
 					break;
 				}
@@ -495,11 +510,17 @@ static int atCmd_waitResponse(char * cmd, char *resp, char * resp1, int cmdSize,
 			ESP_LOGE(TAG,"AT: TIMEOUT");
 			#endif
 			res = 0;
-				ESP_LOGI(TAG, "power key RESET");
-				gpio_set_level(GPIO_GSMPWR, 1);
-				vTaskDelay(3000 / portTICK_RATE_MS);
-				gpio_set_level(GPIO_GSMPWR, 0);
-				vTaskDelay(5000 / portTICK_RATE_MS);
+
+			for(int i=0;i<10;i++)
+			{
+				GSM_Init[i]->skip = 0;
+			}
+
+			ESP_LOGI(TAG, "power key RESET");
+			gpio_set_level(GPIO_GSMPWR, 1);
+			vTaskDelay(3000 / portTICK_RATE_MS);
+			gpio_set_level(GPIO_GSMPWR, 0);
+			vTaskDelay(2000 / portTICK_RATE_MS);
 			break;
 		}
 	}
@@ -511,10 +532,14 @@ static int atCmd_waitResponse(char * cmd, char *resp, char * resp1, int cmdSize,
 static void _disconnect(uint8_t rfOff)
 {
 	int res = atCmd_waitResponse("AT\r\n", GSM_OK_Str, NULL, 4, 1000, NULL, 0);
-	if (res == 1) {
-		if (rfOff) {
-			cmd_Reg.timeoutMs = 10000;
-			res = atCmd_waitResponse("AT+CFUN=4\r\n", GSM_OK_Str, NULL, 11, 10000, NULL, 0); // disable RF function
+	if (res == 1) 
+	{
+		if (rfOff) 
+		{
+			cmd_Reg.timeoutMs = 1000;
+			res = atCmd_waitResponse("AT\r\n", GSM_OK_Str, NULL, 4, 1000, NULL, 0);
+			//cmd_Reg.timeoutMs = 10000;
+			//res = atCmd_waitResponse("AT+CFUN=4\r\n", GSM_OK_Str, NULL, 11, 10000, NULL, 0); // disable RF function
 		}
 		return;
 	}
@@ -609,6 +634,7 @@ static void pppos_client_task()
 	cmd_APN.cmd = PPP_ApnATReq;
 	cmd_APN.cmdSize = strlen(PPP_ApnATReq);
 
+	//puts("ffffffffffffffffffffff");
 	_disconnect(1); // Disconnect if connected
 
 	xSemaphoreTake(pppos_mutex, PPPOSMUTEX_TIMEOUT);
@@ -850,7 +876,7 @@ void GSM_poweron(void)
 	ESP_LOGI(TAG, "power key up");
 	vTaskDelay(3000 / portTICK_RATE_MS);
 	gpio_set_level(GPIO_GSMPWR, 0);
-	vTaskDelay(5000 / portTICK_RATE_MS);
+	vTaskDelay(2000 / portTICK_RATE_MS);
 
 }
 

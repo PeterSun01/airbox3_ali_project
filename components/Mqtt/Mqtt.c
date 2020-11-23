@@ -57,7 +57,7 @@ static esp_err_t mqtt_event_handler(esp_mqtt_event_handle_t event)
         case MQTT_EVENT_CONNECTED:
             ESP_LOGI(TAG, "MQTT_EVENT_CONNECTED");
 
-            xEventGroupSetBits(mqtt_event_group, MQTT_CONNECTED_BIT);
+            
            
             msg_id = esp_mqtt_client_subscribe(client, Topic_Set, 0);//订阅
             ESP_LOGI(TAG, "sent subscribe successful, msg_id=%d", msg_id);
@@ -71,7 +71,8 @@ static esp_err_t mqtt_event_handler(esp_mqtt_event_handle_t event)
             break;
 
         case MQTT_EVENT_SUBSCRIBED:
-            ESP_LOGI(TAG, "MQTT_EVENT_SUBSCRIBED, msg_id=%d", event->msg_id);      
+            ESP_LOGI(TAG, "MQTT_EVENT_SUBSCRIBED, msg_id=%d", event->msg_id);  
+            xEventGroupSetBits(mqtt_event_group, MQTT_CONNECTED_BIT);    
             break;
 
         case MQTT_EVENT_UNSUBSCRIBED:
@@ -126,9 +127,10 @@ static void MqttSend_Task(void* arg)
         xEventGroupWaitBits(PM25_event_group, PM25_COMPLETE_BIT , false, true, portMAX_DELAY); 
         Mqtt_Send_Msg(Topic_Post);
         send_count++;
-        if(send_count>=5)
+        if(send_count>=2)
         {
             send_count=0;
+            vTaskDelay(3000 / portTICK_RATE_MS);
             goto_sleep(LONG_SLEEP_TIME);
         }
         vTaskDelay(1000 / portTICK_RATE_MS);

@@ -120,12 +120,8 @@ void create_mqtt_json(creat_json *pCreat_json)
     cJSON_AddItemToObject(params, "TVOC", cJSON_CreateNumber(TVOC));
     cJSON_AddItemToObject(params, "HCHO", cJSON_CreateNumber(HCHO));
     cJSON_AddItemToObject(params, "Battery", cJSON_CreateNumber(pwr_int));
-    // if(PM2_5<10)
-    // {
-    //     PM2_5=PM2_5+esp_random()%8+3;
-    //     //PM2_5=PM2_5+5;
-    // }
     cJSON_AddItemToObject(params, "PM25", cJSON_CreateNumber(PM2_5));
+    cJSON_AddItemToObject(params, "RSSI", cJSON_CreateNumber(csq_int));
     
     char *cjson_printunformat;
     cjson_printunformat=cJSON_PrintUnformatted(root);

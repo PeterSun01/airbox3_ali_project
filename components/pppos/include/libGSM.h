@@ -15,6 +15,7 @@
 #define GSM_STATE_FIRSTINIT		98
 
 int pwr_int;
+int csq_int;
 
 extern void GSM_PWR_Off(void);
 extern void TVOC_PWR_Off(void);
