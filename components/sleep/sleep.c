@@ -11,22 +11,27 @@
 #include "E2prom.h"
 #include "sht31.h"
 
-
-//static const char *TAG = "SLEEP";
-
+int32_t TVOC_sleep_pwrON_flag=0;
+int32_t update_time=0;
 
 void goto_sleep(int time)
 {
     GSM_PWR_Off();
     PM25_PWR_Off();
-    //TVOC_PWR_Off();
-    TVOC_PWR_On();
+    if(TVOC_sleep_pwrON_flag==0)
+    {
+        printf("TVOC PWR OFF\n");
+        TVOC_PWR_Off();
+    }
+    else if(TVOC_sleep_pwrON_flag==1)
+    {
+        printf("TVOC PWR ON\n");
+        TVOC_PWR_On();
+    }
     IIC_PWR_Off();
     Led_B_Off();
     Led_R_Off();
 
-    //const int wakeup_time_sec = 600;
-    //const int wakeup_time_sec = 10;
     printf("Enabling timer wakeup, %ds\n", time);
     esp_sleep_enable_timer_wakeup(time * 1000000);
     printf("Entering deep sleep\n");

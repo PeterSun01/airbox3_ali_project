@@ -131,7 +131,7 @@ static void MqttSend_Task(void* arg)
         {
             send_count=0;
             vTaskDelay(3000 / portTICK_RATE_MS);
-            goto_sleep(LONG_SLEEP_TIME);
+            goto_sleep(update_time*60);
         }
         vTaskDelay(1000 / portTICK_RATE_MS);
     }

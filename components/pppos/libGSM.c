@@ -454,7 +454,8 @@ static int atCmd_waitResponse(char * cmd, char *resp, char * resp1, int cmdSize,
 						//pwr_int=(float)pwr_int*1.4;
 						//y = -0.0086x2 + 1.9152x - 4.2376
 						//pwr_int=-0.0086*(float)pwr_int*(float)pwr_int + 1.9152*(float)pwr_int - 4.2376;
-						if(pwr_int>=95)
+						pwr_int=pwr_int*1.045;
+						if(pwr_int>=100)
 						{
 							pwr_int=100;
 						}

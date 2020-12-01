@@ -20,8 +20,10 @@
 
 static const char *TAG = "PM25_TVOC";
 void UART2_Read_Task(void* arg);
-extern void write_flash_calibration(void);
+
+
 int32_t calibration_flag=0;
+extern int32_t TVOC_sleep_pwrON_flag;
 
 const char Send_TVOC_passive[]={0x42,0x78,0x04,0x00,0x00,0x00,0x00,0x00,0xff};
 const char Send_TVOC_active[]={0x42,0x78,0x03,0x00,0x00,0x00,0x00,0x00,0xff};
@@ -32,8 +34,27 @@ void TVOC_PWR_GPIO_Init(void)
     io_conf.intr_type = GPIO_PIN_INTR_DISABLE;
     io_conf.mode = GPIO_MODE_OUTPUT;
     io_conf.pin_bit_mask = (1 <<GPIO_TVOC_PWR);
-    io_conf.pull_down_en = 0;
-    io_conf.pull_up_en = 1;
+    if(TVOC_sleep_pwrON_flag==0)
+    {
+        io_conf.pull_down_en = 1;
+        printf("TVOC PWR pull down = %d\n",io_conf.pull_down_en);
+    }
+    else if(TVOC_sleep_pwrON_flag==1)
+    {
+        io_conf.pull_down_en = 0;
+        printf("TVOC PWR pull down = %d\n",io_conf.pull_down_en);
+    }
+    
+    if(TVOC_sleep_pwrON_flag==0)
+    {
+        io_conf.pull_up_en = 0;
+        printf("TVOC PWR pull up = %d\n",io_conf.pull_up_en);
+    }
+    else if(TVOC_sleep_pwrON_flag==1)
+    {
+        io_conf.pull_up_en = 1;
+        printf("TVOC PWR pull up = %d\n",io_conf.pull_up_en);
+    }
     gpio_config(&io_conf);  
 }
 
@@ -214,7 +235,7 @@ void UART2_Read_Task(void* arg)
                             TVOC_aver=TVOC_aver+TVOC;
                             HCHO_aver=HCHO_aver+HCHO;
                         }
-                        if(data_count==600)//结束测量，打开PM25传感器
+                        else if(data_count==600)//结束测量，打开PM25传感器
                         {
                             CO2=CO2_aver/10;
                             TVOC=TVOC_aver/10;
@@ -232,33 +253,65 @@ void UART2_Read_Task(void* arg)
                     
                     else//从睡眠唤醒，无需校准
                     {                    
-                        if((data_count>=40)&&(data_count<50))
+                        if(update_time<10)
                         {
-                            CO2_aver=CO2_aver+CO2;
-                            TVOC_aver=TVOC_aver+TVOC;
-                            HCHO_aver=HCHO_aver+HCHO;
-                        }
-                        if(data_count==50)//结束测量，打开PM25传感器
-                        {
-                            CO2=CO2_aver/10;
-                            TVOC=TVOC_aver/10;
-                            HCHO=HCHO_aver/10;                            
-                            ESP_LOGI(TAG, "final CO2=%dppm,TVOC=%dppb,HCHO=%dppb,data_count=%d,CO2_aver=%d", CO2,TVOC,HCHO,data_count,CO2_aver);
-                            data_count=0;
-
-                            if((CO2==400)&&(TVOC==0)&&(HCHO==0))//需要暖机重新校准
+                            if((data_count>=50)&&(data_count<60))
                             {
-                                goto_sleep(600);
+                                CO2_aver=CO2_aver+CO2;
+                                TVOC_aver=TVOC_aver+TVOC;
+                                HCHO_aver=HCHO_aver+HCHO;
                             }
+                            else if(data_count==60)//结束测量，打开PM25传感器
+                            {
+                                CO2=CO2_aver/10;
+                                TVOC=TVOC_aver/10;
+                                HCHO=HCHO_aver/10;                            
+                                ESP_LOGI(TAG, "final CO2=%dppm,TVOC=%dppb,HCHO=%dppb,data_count=%d,CO2_aver=%d", CO2,TVOC,HCHO,data_count,CO2_aver);
+                                data_count=0;
 
-                            //uart_write_bytes(UART_NUM_2, Send_TVOC_passive, sizeof(Send_TVOC_passive));
-                            //vTaskDelay(500 / portTICK_PERIOD_MS);
-                            //结束TVOC，切换PM25
-                            PM25_PWR_GPIO_Init();
-                            TVOC_PWR_Off();
-                            PM25_PWR_On();
-                            vTaskDelay(500 / portTICK_PERIOD_MS);
-                            
+                                if((CO2==400)&&(TVOC==0)&&(HCHO==0))//需要暖机重新校准
+                                {
+                                    goto_sleep(600);
+                                }
+
+                                //uart_write_bytes(UART_NUM_2, Send_TVOC_passive, sizeof(Send_TVOC_passive));
+                                //vTaskDelay(500 / portTICK_PERIOD_MS);
+                                //结束TVOC，切换PM25
+                                PM25_PWR_GPIO_Init();
+                                TVOC_PWR_Off();
+                                PM25_PWR_On();
+                                vTaskDelay(500 / portTICK_PERIOD_MS);
+                            }
+                        }
+                        else
+                        {
+                            if((data_count>=80)&&(data_count<90))
+                            {
+                                CO2_aver=CO2_aver+CO2;
+                                TVOC_aver=TVOC_aver+TVOC;
+                                HCHO_aver=HCHO_aver+HCHO;
+                            }
+                            else if(data_count==90)//结束测量，打开PM25传感器
+                            {
+                                CO2=CO2_aver/10;
+                                TVOC=TVOC_aver/10;
+                                HCHO=HCHO_aver/10;                            
+                                ESP_LOGI(TAG, "final CO2=%dppm,TVOC=%dppb,HCHO=%dppb,data_count=%d,CO2_aver=%d", CO2,TVOC,HCHO,data_count,CO2_aver);
+                                data_count=0;
+
+                                if((CO2==400)&&(TVOC==0)&&(HCHO==0))//需要暖机重新校准
+                                {
+                                    goto_sleep(600);
+                                }
+
+                                //uart_write_bytes(UART_NUM_2, Send_TVOC_passive, sizeof(Send_TVOC_passive));
+                                //vTaskDelay(500 / portTICK_PERIOD_MS);
+                                //结束TVOC，切换PM25
+                                PM25_PWR_GPIO_Init();
+                                TVOC_PWR_Off();
+                                PM25_PWR_On();
+                                vTaskDelay(500 / portTICK_PERIOD_MS);
+                            }
                         }
                     }
                 }

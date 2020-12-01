@@ -15,13 +15,17 @@
 #include "PMS7003.h"
 #include "libGSM.h"
 
+extern void write_flash_updatetime(uint16_t time);
+extern void write_flash_TVOC_PWR(uint16_t flag);
 
 esp_err_t parse_Uart0(char *json_data)
 {
     cJSON *json_data_parse = NULL;
+    cJSON *json_data_parse_Command = NULL;
     cJSON *json_data_parse_ProductKey = NULL;
     cJSON *json_data_parse_DeviceName = NULL;
     cJSON *json_data_parse_DeviceSecret = NULL;
+    cJSON *json_data_parse_UpdateTime = NULL;
 
     if(json_data[0]!='{')
     {
@@ -38,50 +42,76 @@ esp_err_t parse_Uart0(char *json_data)
     }
     else
     {
+        json_data_parse_Command = cJSON_GetObjectItem(json_data_parse, "Command"); 
         /*
         {
             "Command": "SetupALi",
             "ProductKey": "a18hJfuxArE",
             "DeviceName": "AIR2V001",
-            "DeviceSecret": "kc0tfij2RbXdbOmiHSXnwmaZgR3CDE85",
+            "DeviceSecret": "kc0tfij2RbXdbOmiHSXnwmaZgR3CDE85"
         }
         */
-        char zero_data[256];
-        bzero(zero_data,sizeof(zero_data));
+        if(strcmp(json_data_parse_Command->valuestring,"SetupALi")==0)//烧录阿里云三元组
+        {
+            char zero_data[256];
+            bzero(zero_data,sizeof(zero_data));
+            
+            json_data_parse_ProductKey = cJSON_GetObjectItem(json_data_parse, "ProductKey");
+            if(json_data_parse_ProductKey!=NULL) 
+            {
+                E2prom_Write(PRODUCTKEY_ADDR, (uint8_t *)zero_data, PRODUCTKEY_LEN);            
+                sprintf(ProductKey,"%s%c",json_data_parse_ProductKey->valuestring,'\0');
+                E2prom_Write(PRODUCTKEY_ADDR, (uint8_t *)ProductKey, strlen(ProductKey));            
+                printf("ProductKey= %s\n", json_data_parse_ProductKey->valuestring);
+            }
+
+            json_data_parse_DeviceName = cJSON_GetObjectItem(json_data_parse, "DeviceName"); 
+            if(json_data_parse_DeviceName!=NULL) 
+            {
+                E2prom_Write(DEVICENAME_ADDR, (uint8_t *)zero_data, DEVICENAME_LEN);   
+                sprintf(DeviceName,"%s%c",json_data_parse_DeviceName->valuestring,'\0');
+                E2prom_Write(DEVICENAME_ADDR, (uint8_t *)DeviceName, strlen(DeviceName)); 
+                printf("DeviceName= %s\n", json_data_parse_DeviceName->valuestring);
+            }
+
+            json_data_parse_DeviceSecret = cJSON_GetObjectItem(json_data_parse, "DeviceSecret"); 
+            if(json_data_parse_DeviceSecret!=NULL) 
+            {
+                E2prom_Write(DEVICESECRET_ADDR, (uint8_t *)zero_data, DEVICESECRET_LEN);   
+                sprintf(DeviceSecret,"%s%c",json_data_parse_DeviceSecret->valuestring,'\0');
+                E2prom_Write(DEVICESECRET_ADDR, (uint8_t *)DeviceSecret, strlen(DeviceSecret));
+                printf("DeviceSecret= %s\n", json_data_parse_DeviceSecret->valuestring);
+            }  
+
+       }
+        /*
+        {
+            "Command": "UpdateTime",
+            "value": 10
+        }
+        */
+        else if(strcmp(json_data_parse_Command->valuestring,"UpdateTime")==0)//设置更新时间
+        {
+            json_data_parse_UpdateTime = cJSON_GetObjectItem(json_data_parse, "value"); 
+            write_flash_updatetime(json_data_parse_UpdateTime->valueint);
+        }
+        /*
+        {
+            "Command": "TVOC_ON",
+            "value": 0
+        }
+        */
+        else if(strcmp(json_data_parse_Command->valuestring,"TVOC_ON")==0)//设置TVOC在休眠时是否打开电源，0=关，1=开
+        {
+            json_data_parse_UpdateTime = cJSON_GetObjectItem(json_data_parse, "value"); 
+            write_flash_TVOC_PWR(json_data_parse_UpdateTime->valueint);
+        }
         
-        json_data_parse_ProductKey = cJSON_GetObjectItem(json_data_parse, "ProductKey");
-        if(json_data_parse_ProductKey!=NULL) 
-        {
-            E2prom_Write(PRODUCTKEY_ADDR, (uint8_t *)zero_data, PRODUCTKEY_LEN);            
-            sprintf(ProductKey,"%s%c",json_data_parse_ProductKey->valuestring,'\0');
-            E2prom_Write(PRODUCTKEY_ADDR, (uint8_t *)ProductKey, strlen(ProductKey));            
-            printf("ProductKey= %s\n", json_data_parse_ProductKey->valuestring);
-        }
-
-        json_data_parse_DeviceName = cJSON_GetObjectItem(json_data_parse, "DeviceName"); 
-        if(json_data_parse_DeviceName!=NULL) 
-        {
-            E2prom_Write(DEVICENAME_ADDR, (uint8_t *)zero_data, DEVICENAME_LEN);   
-            sprintf(DeviceName,"%s%c",json_data_parse_DeviceName->valuestring,'\0');
-            E2prom_Write(DEVICENAME_ADDR, (uint8_t *)DeviceName, strlen(DeviceName)); 
-            printf("DeviceName= %s\n", json_data_parse_DeviceName->valuestring);
-        }
-
-        json_data_parse_DeviceSecret = cJSON_GetObjectItem(json_data_parse, "DeviceSecret"); 
-        if(json_data_parse_DeviceSecret!=NULL) 
-        {
-            E2prom_Write(DEVICESECRET_ADDR, (uint8_t *)zero_data, DEVICESECRET_LEN);   
-            sprintf(DeviceSecret,"%s%c",json_data_parse_DeviceSecret->valuestring,'\0');
-            E2prom_Write(DEVICESECRET_ADDR, (uint8_t *)DeviceSecret, strlen(DeviceSecret));
-            printf("DeviceSecret= %s\n", json_data_parse_DeviceSecret->valuestring);
-        }  
-
         printf("{\"status\":\"success\",\"err_code\": 0}");
         cJSON_Delete(json_data_parse);
         fflush(stdout);//使stdout清空，就会立刻输出所有在缓冲区的内容。
         esp_restart();//芯片复位 函数位于esp_system.h
         return 1;
-
     }
 }
 
@@ -132,11 +162,6 @@ void create_mqtt_json(creat_json *pCreat_json)
     free(cjson_printunformat);
     cJSON_Delete(root);
 }
-
-
-
-
-
 
 
 /*
