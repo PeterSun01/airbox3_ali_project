@@ -26,6 +26,7 @@ extern const int PPP_CONNECTED_BIT;
 int32_t restart_counter = 0;
 extern int32_t calibration_flag;
 extern int32_t TVOC_sleep_pwrON_flag;
+time_t sys_time;
 
 void timer_periodic_cb(void *arg); 
 esp_timer_handle_t timer_periodic_handle = 0; //定时器句柄
@@ -183,6 +184,18 @@ void app_main(void)
 {
   ESP_ERROR_CHECK(nvs_flash_init());
   read_flash_usr();
+
+  time(&sys_time);
+  printf("timestamps=%ld\n",sys_time);
+  if(sys_time<3)//从没电到上电，先进行TVOC 15min预热校准
+  {
+    calibration_flag=1;
+  }
+  if(sys_time<=14400)//上电开始前4H，休眠时TVOC电源一直开启
+  {
+    TVOC_sleep_pwrON_flag=1;
+  }
+
   Led_Init();
   PM25_PWR_GPIO_Init();
   PM25_PWR_Off();
@@ -190,18 +203,6 @@ void app_main(void)
   ESP_LOGI("MAIN", "[APP] IDF version: %s", esp_get_idf_version());
   i2c_init();
   Uart0_Init();
-
-  time_t timep;
-  //struct tm *p;
-  time (&timep);
-  //p=gmtime(&timep);
-  //ESP_LOGI("RTC", "Read:%d-%d-%d %d:%d:%d",(1900+p->tm_year),(1+p->tm_mon),p->tm_mday,p->tm_hour,p->tm_min,p->tm_sec);
-  printf("timestamps=%ld\n",timep);
-  if(timep<5)//从没电到上电，先进行TVOC 15min预热校准
-  {
-    calibration_flag=1;
-  }
-
   xTaskCreate(Uart0_Task, "Uart0_Task", 4096, NULL, 10, NULL);
   
   

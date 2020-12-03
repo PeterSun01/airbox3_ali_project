@@ -229,13 +229,13 @@ void UART2_Read_Task(void* arg)
                     if(calibration_flag==1)//从没电到上电，先进行TVOC 10min预热校准
                     {
                         Led_Status=LED_STA_INIT;
-                        if((data_count>=590)&&(data_count<600))
+                        if((data_count>=890)&&(data_count<900))
                         {
                             CO2_aver=CO2_aver+CO2;
                             TVOC_aver=TVOC_aver+TVOC;
                             HCHO_aver=HCHO_aver+HCHO;
                         }
-                        else if(data_count==600)//结束测量，打开PM25传感器
+                        else if(data_count==900)//结束测量，打开PM25传感器
                         {
                             CO2=CO2_aver/10;
                             TVOC=TVOC_aver/10;
@@ -271,7 +271,9 @@ void UART2_Read_Task(void* arg)
 
                                 if((CO2==400)&&(TVOC==0)&&(HCHO==0))//需要暖机重新校准
                                 {
-                                    goto_sleep(600);
+                                    calibration_flag=1;
+                                    vTaskDelay(600000 / portTICK_PERIOD_MS);
+                                    goto_sleep(5);
                                 }
 
                                 //uart_write_bytes(UART_NUM_2, Send_TVOC_passive, sizeof(Send_TVOC_passive));
@@ -285,13 +287,13 @@ void UART2_Read_Task(void* arg)
                         }
                         else
                         {
-                            if((data_count>=80)&&(data_count<90))
+                            if((data_count>=110)&&(data_count<120))
                             {
                                 CO2_aver=CO2_aver+CO2;
                                 TVOC_aver=TVOC_aver+TVOC;
                                 HCHO_aver=HCHO_aver+HCHO;
                             }
-                            else if(data_count==90)//结束测量，打开PM25传感器
+                            else if(data_count==120)//结束测量，打开PM25传感器
                             {
                                 CO2=CO2_aver/10;
                                 TVOC=TVOC_aver/10;
