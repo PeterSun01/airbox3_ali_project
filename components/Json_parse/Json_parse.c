@@ -15,6 +15,8 @@
 #include "PMS7003.h"
 #include "libGSM.h"
 
+int msg_code=0;
+
 extern void write_flash_updatetime(uint16_t time);
 extern void write_flash_TVOC_PWR(uint16_t flag);
 
@@ -152,6 +154,8 @@ void create_mqtt_json(creat_json *pCreat_json)
     cJSON_AddItemToObject(params, "Battery", cJSON_CreateNumber(pwr_int));
     cJSON_AddItemToObject(params, "PM25", cJSON_CreateNumber(PM2_5));
     cJSON_AddItemToObject(params, "RSSI", cJSON_CreateNumber(csq_int));
+    cJSON_AddItemToObject(params, "MSGCODE", cJSON_CreateNumber(msg_code));
+    
     
     char *cjson_printunformat;
     cjson_printunformat=cJSON_PrintUnformatted(root);

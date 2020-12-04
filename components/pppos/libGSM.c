@@ -11,9 +11,7 @@
 #include "netif/ppp/ppp.h"
 //#include "lwip/pppapi.h"
 #include "netif/ppp/pppapi.h"
-
 #include "libGSM.h"
-
 #include "lwip/err.h"
 #include "lwip/sockets.h"
 #include "lwip/sys.h"
